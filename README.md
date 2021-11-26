@@ -217,3 +217,30 @@ vagrant ssh
 exit
 vagrant destroy -f
 ```
+
+## Proxmox Virtual Environment usage
+
+Set your Proxmox details:
+
+```bash
+cat >secrets.sh <<'EOF'
+export PVE_URL='https://proxmox_url:8006/api2/json'
+export PVE_USERNAME='terraform@pve'
+export PVE_PASSWORD='secret'
+export PVE_TOKEN='uuid'
+export PVE_STORAGEPOOL='nvmePool-VM'
+export PVE_STORAGEPOOL_TYPE='directory'
+export PVE_ISOPOOL='ISO'
+export PVE_POOL='Terraform'
+export PVE_BRIDGE='vmbr0'
+export PVE_ISOFILE="$PVE_ISOPOOL:iso/mini.iso"
+export PVE_NODE='proxmox-01'
+EOF
+source secrets.sh
+```
+
+Download the Ubuntu ISO (you can find the full iso URL in the [ubuntu.pkr.hcl](ubuntu.pkr.hcl) file) and place it inside the datastore as defined by the `iso_paths` property that is inside the [packer template](ubuntu-proxmox.pkr.hcl) file.
+
+See the [example Vagrantfile](example/Vagrantfile) to see how you could use a cloud-init configuration to configure the VM.
+
+Type `make build-proxmox` and follow the instructions.
