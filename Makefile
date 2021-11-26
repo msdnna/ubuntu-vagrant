@@ -4,13 +4,14 @@ SHELL=bash
 VERSION=20.04
 
 help:
-	@echo type make build-libvirt, make build-uefi-libvirt, make build-virtualbox, make build-hyperv or make build-vsphere
+	@echo type make build-libvirt, make build-uefi-libvirt, make build-virtualbox, make build-hyperv, make build-vsphere or make build-proxmox
 
 build-libvirt: ubuntu-${VERSION}-amd64-libvirt.box
 build-uefi-libvirt: ubuntu-${VERSION}-uefi-amd64-libvirt.box
 build-virtualbox: ubuntu-${VERSION}-amd64-virtualbox.box
 build-hyperv: ubuntu-${VERSION}-amd64-hyperv.box
 build-vsphere: ubuntu-${VERSION}-amd64-vsphere.box
+build-proxmox: ubuntu-${VERSION}-amd64-pve.box
 
 ubuntu-${VERSION}-amd64-libvirt.box: preseed.txt provision.sh ubuntu.pkr.hcl Vagrantfile.template
 	rm -f $@
@@ -66,4 +67,22 @@ tmp/preseed-vsphere.txt: preseed.txt
 	mkdir -p tmp
 	sed -E 's,(d-i pkgsel/include string .+),\1 open-vm-tools,g' preseed.txt >$@
 
-.PHONY: help buid-libvirt buid-uefi-libvirt build-virtualbox build-vsphere
+ubuntu-${VERSION}-amd64-pve.box: tmp/preseed-proxmox.txt provision.sh ubuntu-proxmox.pkr.hcl Vagrantfile.template
+	rm -f $@
+	PACKER_KEY_INTERVAL=10ms CHECKPOINT_DISABLE=1 PACKER_LOG=1 PACKER_LOG_PATH=$@.log PKR_VAR_version=${VERSION} \
+		packer build -only=proxmox-iso.ubuntu-amd64 -timestamp-ui ubuntu-proxmox.pkr.hcl
+	rm -rf tmp/$@-contents
+	mkdir -p tmp/$@-contents
+	echo '{"provider":"proxmox"}' >tmp/$@-contents/metadata.json
+	cp Vagrantfile.template tmp/$@-contents/Vagrantfile
+	tar cvf $@ -C tmp/$@-contents .
+	@echo BOX successfully built!
+	@echo to add to local vagrant install do:
+	@echo vagrant box add -f ubuntu-${VERSION}-amd64 $@
+
+tmp/preseed-proxmox.txt: preseed.txt
+	mkdir -p tmp
+	sed -E 's,(d-i pkgsel/include string .+),\1 qemu-guest-agent,g' preseed.txt >$@
+
+
+.PHONY: help buid-libvirt buid-uefi-libvirt build-virtualbox build-vsphere build-proxmox
